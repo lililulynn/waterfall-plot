@@ -1,0 +1,38 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+data = np.load('20231215173525.npy')
+
+sample_rate = 10e6
+row_nums = 500
+fft_size = 1024
+
+total_spectrogram = np.zeros([row_nums, int((np.shape(data)[0]-1)/2 * fft_size)])
+last_spectrogram = np.zeros([row_nums, fft_size])
+for i in range(np.shape(data)[0]):
+    spectrogram = np.zeros([row_nums, fft_size])
+    for j in range(row_nums):
+        spectrogram[j, :] = 10 * np.log10(np.abs(np.fft.fftshift(np.fft.fft(data[i, j * fft_size:(j + 1) * fft_size]))) ** 2)[0 : fft_size]
+    if not i:
+        last_spectrogram = spectrogram
+    else:
+        total_spectrogram[:, int(fft_size/2 * (i-1)) : int(fft_size/2 * (i-1))+102] = last_spectrogram[:, int(fft_size/2) : int(fft_size/2)+102]
+        total_spectrogram[:, int(fft_size/2 * (i-1))+102 : int(fft_size/2 * i)-102] = (spectrogram[:, 102:int(fft_size/2)-102] + last_spectrogram[:, int(fft_size/2)+102:-102]) / 2
+        total_spectrogram[:, int(fft_size/2 * i)-102 : int(fft_size/2 * i)] = spectrogram[:, int(fft_size/2)-102 : int(fft_size/2)]
+        last_spectrogram = spectrogram
+
+# a = total_spectrogram[:, int(512*10):int(512*12)]
+# print(a[40, 10:20])
+fig, ax = plt.subplots(figsize=(40, 8))
+cax = ax.imshow(total_spectrogram, aspect='auto', cmap='jet', extent=[50e6, 300e6,0,int((data.size)*1/sample_rate)])
+# plt.imshow(total_spectrogram, aspect='auto', cmap='jet', extent=[50e6, 300e6,0,int((data.size)*1/sample_rate)])
+ax.set_xlabel("Frequency [Hz]")
+ax.set_ylabel("Time [s]")
+
+fig.colorbar(cax, label="Power (dB)")
+plt.show()
+#plt.savefig("test.pdf")
+
+
+
